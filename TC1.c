@@ -81,7 +81,7 @@ void process_client_request(int new_sock) {
         }
         
         send_file(new_sock, path);
-        //shutdown(new_sock, SHUT_WR);
+        shutdown(new_sock, SHUT_WR);
     } else {
         // Unsupported method
     }
