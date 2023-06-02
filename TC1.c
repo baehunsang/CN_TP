@@ -11,7 +11,35 @@
 char resources_dir[MAX_BUF];
 
 void send_file(int new_sock, char* path) {
-    char response[MAX_BUF];
+    char* response;
+    if(!strcmp(path, "index.html")){
+        response = "HTTP/1.1 200 OK\r\n"
+                    "Connection: Keep-Alive\r\n"
+                    "keep-alive: timeout=5, max=30\r\n"
+                    "Content-Type: text/html\r\n\r\n";
+    }
+    else if(!strcmp(path, "script.js")){
+        response = "HTTP/1.1 200 OK\r\n"
+                    "Connection: Keep-Alive\r\n"
+                    "keep-alive: timeout=5, max=30\r\n"
+                    "Content-Type: text/js\r\n\r\n";
+    }
+    else if(!strcmp(path, "gr-small.png")){
+        response = "HTTP/1.1 200 OK\r\n"
+                    "Connection: Keep-Alive\r\n"
+                    "keep-alive: timeout=5, max=30\r\n"
+                    "Content-Type: image/png\r\n\r\n";
+    }
+    else if(!strcmp(path, "gr-large.jpg")){
+        response = "HTTP/1.1 200 OK\r\n"
+                    "Connection: Keep-Alive\r\n"
+                    "keep-alive: timeout=5, max=30\r\n"
+                    "Content-Type: image/jpg\r\n\r\n";
+    }
+    
+
+    
+
     char file_path[MAX_BUF];
     snprintf(file_path, sizeof(file_path), "%s/%s", resources_dir, path);
 
@@ -19,43 +47,6 @@ void send_file(int new_sock, char* path) {
     char buffer[MAX_BUF];
 
     if (file != NULL) {
-         // Get the file size
-        fseek(file, 0L, SEEK_END);
-        long int file_size = ftell(file);
-        fseek(file, 0L, SEEK_SET);
-
-        if(!strcmp(path, "index.html")){
-        snprintf(response, sizeof(response),
-                "HTTP/1.1 200 OK\r\n"
-                "Connection: Keep-Alive\r\n"
-                "keep-alive: timeout=5, max=30\r\n"
-                "Content-Type: text/html\r\n"
-                "Content-Length: %ld\r\n\r\n", file_size);
-        }
-        if(!strcmp(path, "script.js")){
-        snprintf(response, sizeof(response),
-                "HTTP/1.1 200 OK\r\n"
-                "Connection: Keep-Alive\r\n"
-                "keep-alive: timeout=5, max=30\r\n"
-                "Content-Type: text/js\r\n"
-                "Content-Length: %ld\r\n\r\n", file_size);
-        }
-        if(!strcmp(path, "gr-small.png")){
-        snprintf(response, sizeof(response),
-                "HTTP/1.1 200 OK\r\n"
-                "Connection: Keep-Alive\r\n"
-                "keep-alive: timeout=5, max=30\r\n"
-                "Content-Type: img/png\r\n"
-                "Content-Length: %ld\r\n\r\n", file_size);
-        }
-        if(!strcmp(path, "gr-large.jpg")){
-        snprintf(response, sizeof(response),
-                "HTTP/1.1 200 OK\r\n"
-                "Connection: Keep-Alive\r\n"
-                "keep-alive: timeout=5, max=30\r\n"
-                "Content-Type: img/jpg\r\n"
-                "Content-Length: %ld\r\n\r\n", file_size);
-        }
         send(new_sock, response, strlen(response), 0);
         size_t n;
         while((n = fread(buffer, 1, MAX_BUF, file)) > 0) {
@@ -63,14 +54,14 @@ void send_file(int new_sock, char* path) {
         }
         fclose(file);
     } else {
-        snprintf(response, sizeof(response), "HTTP/1.1 404 Not Found\r\n");
+        response = "HTTP/1.1 404 Not Found\r\n";
         send(new_sock, response, strlen(response), 0);
         perror("File open error");
     }
 }
-    
 
-void process_client_request(int new_sock) {
+
+int process_client_request(int new_sock) {
     char buffer[MAX_BUF];
     if(!recv(new_sock, buffer, sizeof(buffer) - 1, 0)){
         close(new_sock);
@@ -78,6 +69,7 @@ void process_client_request(int new_sock) {
     };
     char method[5];
     char path[MAX_BUF];
+    char connection_status[MAX_BUF];
 
     sscanf(buffer, "%s %s", method, path);
 
@@ -90,7 +82,9 @@ void process_client_request(int new_sock) {
         }
         
         send_file(new_sock, path);
-        //shutdown(new_sock, SHUT_WR);
+
+        
+        
     } else {
         // Unsupported method
         char* response = "HTTP/1.1 400 Bad Request\r\n";
@@ -134,7 +128,7 @@ int main(int argc, char *argv[]) {
     int new_socket;
     int i;
     struct timeval timeout;
-    timeout.tv_sec = 0; // timeout after 5 seconds
+    timeout.tv_sec = 0; 
     timeout.tv_usec = 0;
     for (i = 0; i < MAX_CLIENTS; i++) {
         client_sockets[i] = 0;
@@ -142,29 +136,26 @@ int main(int argc, char *argv[]) {
 
     while (1) {
         FD_ZERO(&readfds);
-
         FD_SET(server_sock, &readfds);
         max_sd = server_sock;
         
         for (i = 0; i < MAX_CLIENTS; i++) {
             sd = client_sockets[i];
-
-            if (sd > 0) {
+            if(sd > 0){
                 FD_SET(sd, &readfds);
             }
-
             if (sd > max_sd) {
                 max_sd = sd;
             }
         }
-
         select(max_sd + 1, &readfds, NULL, NULL, &timeout);
+
+        
 
         if (FD_ISSET(server_sock, &readfds)) {
             struct sockaddr_in client_addr;
             socklen_t clilen = sizeof(client_addr);
 
-            printf("waiting for new client...\n");
             new_socket = accept(server_sock, (struct sockaddr*)&client_addr, &clilen);
 
             if (new_socket < 0) {
@@ -172,22 +163,25 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            printf("client connected\n");
 
             for (i = 0; i < MAX_CLIENTS; i++) {
+                if(client_sockets[i] == new_socket){
+                    break;
+                }
                 if (client_sockets[i] == 0) {
                     client_sockets[i] = new_socket;
-                    FD_SET(new_socket, &readfds);
+                    FD_SET(client_sockets[i], &readfds);
                     break;
                 }
             }
         }
-
+        
         for (i = 0; i < MAX_CLIENTS; i++) {
             sd = client_sockets[i];
-
             if (FD_ISSET(sd, &readfds)) {
-                process_client_request(sd);
+                if(process_client_request(sd) == -1) {
+                    client_sockets[i] = 0;
+                }
             }
             else if(sd > 0){
                 close(sd);
@@ -197,6 +191,7 @@ int main(int argc, char *argv[]) {
                 continue;
             }
         }
+        
     }
 
     close(server_sock);
