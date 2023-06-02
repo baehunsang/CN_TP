@@ -56,7 +56,6 @@ void send_file(int new_sock, char* path) {
     } else {
         response = "HTTP/1.1 404 Not Found\r\n";
         send(new_sock, response, strlen(response), 0);
-        perror("File open error");
     }
 }
 
@@ -93,18 +92,16 @@ int process_client_request(int new_sock) {
 }
 
 int main(int argc, char *argv[]) {
-    /*if (argc != 3) {
-        fprintf(stderr,"usage: %s <port> <resources_directory>\n", argv[0]);
+    if (argc != 3) {
         exit(1);
-    }*/
+    }
 
-    int portno = 8080; //atoi(argv[1]);
-    strncpy(resources_dir, "resources"/*argv[2]*/, MAX_BUF - 1);
+    int portno = atoi(argv[1]);
+    strncpy(resources_dir, argv[2], MAX_BUF - 1);
     resources_dir[MAX_BUF - 1] = '\0';
 
     int server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (server_sock < 0) {
-        perror("ERROR opening socket");
         exit(1);
     }
 
@@ -116,7 +113,6 @@ int main(int argc, char *argv[]) {
     serv_addr.sin_port = htons(portno);
 
     if (bind(server_sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        perror("ERROR on binding");
         exit(1);
     }
 
@@ -159,7 +155,6 @@ int main(int argc, char *argv[]) {
             new_socket = accept(server_sock, (struct sockaddr*)&client_addr, &clilen);
 
             if (new_socket < 0) {
-                perror("ERROR on accept");
                 continue;
             }
 
